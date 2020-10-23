@@ -1717,38 +1717,15 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         Ax.db.execute(`SET EXPLAIN FILE TO '/home/informix/eyh_test/explains/fact_int_testorder_${new Ax.util.Date().format("yyyyMMddHHmmss")}';`);
                         var rs_int_testorder = Ax.db.execute(`
                         MERGE INTO fact_int_testorder T
-                        USING (
-                            SELECT 
-                            source.servercode, 
-                            source.requestcode, 
-                            source.testcode, 
-                            source.orderindex, 
-                            source.labcode, 
-                            
-                            source.test_id, 
-                            source.req_id, 
-                            source.s_sourcesys, 
-                            source.entity, 
-                            
-                            source.quantity, 
-                            source.test_payer1, 
-                            source.test_payer2, 
-                            source.test_payer3, 
-                            source.test_payer4, 
-                            source.test_idpayer1, 
-                            source.date_created, 
-                            source.time_created 
-
-                        FROM
-                        @temp_load_testorder as source
-                        WHERE source.serialid = 1
-                        ) as S 
+                        USING 
+                        @temp_load_testorder as S
                         ON(
                             T.servercode = S.servercode AND
                             T.requestcode = S.requestcode AND
                             T.testcode = S.testcode AND
                             T.orderindex = S.orderindex AND
-                            T.labcode = S.labcode
+                            T.labcode = S.labcode AND 
+                            S.serialid = 1
                             )
                         WHEN NOT MATCHED THEN
                         INSERT(
