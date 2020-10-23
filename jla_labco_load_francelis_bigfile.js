@@ -1268,61 +1268,12 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         
                         var rs_int_request = Ax.db.execute(`
                         MERGE INTO fact_int_request T
-                        USING (
-                            SELECT 
-
-                            source.req_servercode,
-                            source.req_labcode,
-                            source.req_code, 
-                            source.s_sourcesys, 
-                            source.s_loading, 
-                            source.req_entity, 
-                            source.req_payer1, 
-                            source.req_payer2, 
-                            source.req_payer3, 
-                            source.req_payer4,  
-                            source.req_patcode, 
-                            source.req_precod1, 
-                            source.req_idpatient, 
-                            source.req_idpayer1, 
-                            source.req_numreq, 
-                            source.req_countrykpi, 
-                            source.req_date_created, 
-                            source.req_time_created, 
-                            source.req_date_loaded, 
-                            source.req_procnum, 
-                            source.req_status, 
-                            source.req_delete, 
-                            source.req_est_amount_eur, 
-                            source.req_inv_amount_eur, 
-                            source.req_est_amount_com, 
-                            source.req_inv_amount_com, 
-                            source.req_pay1_est_amount_eur, 
-                            source.req_pay1_inv_amount_eur, 
-                            source.req_pay1_est_amount_com, 
-                            source.req_pay1_inv_amount_com, 
-                            source.req_pay2_est_amount_eur, 
-                            source.req_pay2_inv_amount_eur, 
-                            source.req_pay2_est_amount_com, 
-                            source.req_pay2_inv_amount_com, 
-                            source.req_pay3_est_amount_eur, 
-                            source.req_pay3_inv_amount_eur, 
-                            source.req_pay3_est_amount_com, 
-                            source.req_pay3_inv_amount_com, 
-                            source.req_pay4_est_amount_eur, 
-                            source.req_pay4_inv_amount_eur, 
-                            source.req_pay4_est_amount_com, 
-                            source.req_pay4_inv_amount_com, 
-                            source.currency 
-
-                        FROM
-                        @temp_load_request as source
-                        WHERE source.serialid = 1
-                        ) as S 
+                        USING @temp_load_request as S
                         ON(
                             T.req_servercode = S.req_servercode AND
                             T.req_labcode = S.req_labcode AND
-                            T.req_code = S.req_code)
+                            T.req_code = S.req_code AND 
+                            S.serialid = 1)
                         WHEN NOT MATCHED THEN
                         INSERT(
                                 T.req_servercode,
@@ -1691,20 +1642,22 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         `);
 
                         m_processlog.log(`Starting Indexes Creation for @temp_load_testorder`);
-
-                        Ax.db.execute(`
-                            CREATE INDEX @temp_load_testorder_i1
-                        ON @temp_load_testorder (servercode, requestcode, testcode, orderindex, labcode);
-                        `);
         
                         Ax.db.execute(`
-                            CREATE INDEX @temp_load_testorder_i2
+                            CREATE INDEX @temp_load_testorder_i
                         ON @temp_load_testorder (serialid);
                         `);
                         
+
+                        m_processlog.log(`Creating temp table: @tmp_fact_int_testorder`);
                         Ax.db.execute(`
-                            UPDATE STATISTICS LOW FOR TABLE @temp_load_testorder;
+                            SELECT * FROM @temp_load_testorder where serialid = 1`);
+
+                        Ax.db.execute(`
+                            CREATE INDEX @tmp_fact_int_testorder_i
+                        ON @tmp_fact_int_testorder (servercode, requestcode, testcode, orderindex, labcode);
                         `);
+
                         
                         //test
                         // var rsx =  Ax.db.executeQuery(`SELECT count(*) FROM @temp_load_testorder`);
@@ -1718,14 +1671,13 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         var rs_int_testorder = Ax.db.execute(`
                         MERGE INTO fact_int_testorder T
                         USING 
-                        @temp_load_testorder as S
+                        @tmp_fact_int_testorder as S
                         ON(
                             T.servercode = S.servercode AND
                             T.requestcode = S.requestcode AND
                             T.testcode = S.testcode AND
                             T.orderindex = S.orderindex AND
-                            T.labcode = S.labcode AND 
-                            S.serialid = 1
+                            T.labcode = S.labcode
                             )
                         WHEN NOT MATCHED THEN
                         INSERT(
