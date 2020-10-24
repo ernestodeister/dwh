@@ -1245,10 +1245,6 @@ function jla_labco_load_francelis_bigfile(p_source) {
 
                         m_processlog.log(`Starting Indexes Creation for @temp_load_request`);
 
-                        Ax.db.execute(`
-                            CREATE INDEX @temp_load_request_i1
-                        ON @temp_load_request (req_servercode,req_labcode,req_code);
-                        `);
         
                         Ax.db.execute(`
                             CREATE INDEX @temp_load_request_i2
@@ -1259,6 +1255,19 @@ function jla_labco_load_francelis_bigfile(p_source) {
                             UPDATE STATISTICS LOW FOR TABLE @temp_load_request;
                         `);
         
+
+
+                        m_processlog.log(`Starting Creation for @temp2_load_request`);
+                        Ax.db.execute(`
+                            SELECT * FROM @temp_load_request where serialid = 1 
+                            INTO TEMP @temp2_load_request WITH NO LOG`);
+
+
+                        Ax.db.execute(`
+                            CREATE INDEX @temp2_load_request_i
+                        ON @temp_load_request (req_servercode,req_labcode,req_code);
+                        `);
+
                         m_processlog.log(`Starting Merge from @temp_load_request to fact_int_request`);
                         //EYH: The select used in the merge only have into account the first row by unique key of fact_int_testorder (source.serialid = 1)
 
@@ -1268,12 +1277,11 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         
                         var rs_int_request = Ax.db.execute(`
                         MERGE INTO fact_int_request T
-                        USING @temp_load_request as S
+                        USING @temp2_load_request as S
                         ON(
                             T.req_servercode = S.req_servercode AND
                             T.req_labcode = S.req_labcode AND
-                            T.req_code = S.req_code AND 
-                            S.serialid = 1)
+                            T.req_code = S.req_code)
                         WHEN NOT MATCHED THEN
                         INSERT(
                                 T.req_servercode,
@@ -1651,7 +1659,8 @@ function jla_labco_load_francelis_bigfile(p_source) {
 
                         m_processlog.log(`Creating temp table: @tmp_fact_int_testorder`);
                         Ax.db.execute(`
-                            SELECT * FROM @temp_load_testorder where serialid = 1`);
+                            SELECT * FROM @temp_load_testorder where serialid = 1 
+                            INTO TEMP @tmp_fact_int_testorder WITH NO LOG`);
 
                         Ax.db.execute(`
                             CREATE INDEX @tmp_fact_int_testorder_i
@@ -1666,9 +1675,7 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         m_processlog.log(`Starting Merge from @temp_load_testorder to fact_int_testorder`);
                         //EYH: The select used in the merge only have into account the first row by unique key of fact_int_testorder (source.serialid = 1)
 
-                        Ax.db.execute('SET EXPLAIN ON AVOID_EXECUTE;');
-                        Ax.db.execute(`SET EXPLAIN FILE TO '/home/informix/eyh_test/explains/fact_int_testorder_${new Ax.util.Date().format("yyyyMMddHHmmss")}';`);
-                        var rs_int_testorder = Ax.db.execute(`
+                         var rs_int_testorder = Ax.db.execute(`
                         MERGE INTO fact_int_testorder T
                         USING 
                         @tmp_fact_int_testorder as S
@@ -1740,7 +1747,6 @@ function jla_labco_load_francelis_bigfile(p_source) {
                         
                         `);
                         
-                        Ax.db.execute(`SET EXPLAIN OFF;`);
 
                         m_processlog.log('Merge finished');                    
 
